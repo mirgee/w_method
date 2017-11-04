@@ -1,7 +1,8 @@
 import csv
 import pprint
-import time
+from itertools import combinations, permutations
 from partition import Partition
+
 
 class FSM(object):
 
@@ -18,8 +19,12 @@ class FSM(object):
 		self.input_alphabet = set()
 		self.output_alphabet = set()
 		self._covered_transitions = set()
+		# (state, k) -> partition
+		self.partitions = []
+		self.char_set = dict()
 
 	def read_from_csv(self, filename):
+		"""Read the FSM from a csv file on filename."""
 		with open(filename, "r") as f:
 			reader = csv.reader(f, delimiter=",", skipinitialspace=True)
 			self.init_state = next(reader)[1]
@@ -51,18 +56,26 @@ class FSM(object):
 		return self.transitions[(curr_state, action)][1]
 
 	def _successors(self, state):
+		"""Returns all successive states of state."""
 		successors = []
 		for a in self.actions:
 			successors.append(self._next_state(state, a))
 		return successors
+
+	def _outputs(self, state):
+		"""Returns the sequence of outputs from state."""
+		outputs = []
+		for a in self.actions:
+			outputs.append(self._next_output(state, a))
+		return outputs
 
 	def transition(self, state, input_word):
 		"""Returns end state and output after inputting input_word from state."""
 		s = state
 		o = []
 		for a in input_word:
+			o.append(self._next_output(s, a))
 			s = self._next_state(state, a)
-			o.append(self._next_output(state, a))
 		return s, o
 
 	def state_covering_paths(self):
@@ -91,6 +104,7 @@ class FSM(object):
 		return paths
 
 	def action_history(self, parent, previous):
+		"""Helper method to reconstruct input sequence."""
 		history = []
 		state = parent
 		while state is not self.init_state:
@@ -99,6 +113,7 @@ class FSM(object):
 		return history
 
 	def state_cover(self):
+		"""Find state cover of the FSM."""
 		paths = self.state_covering_paths().values()
 		l = []
 		for p in paths:
@@ -119,6 +134,7 @@ class FSM(object):
 		return edge_cover
 
 	def edge_cover(self):
+		"""Find edge cover of FSM."""
 		paths = self.state_covering_paths()
 		edge_cover = self.state_cover()
 		for transition in self.transitions_set - self._covered_transitions:
@@ -130,29 +146,81 @@ class FSM(object):
 
 	def equivalence_partitions(self):
 		"""Returns list of equivalence partitions?"""
-		# (state, k) -> partition
-		partitions = []
 		partition = Partition()
 		for state in self.states:
-			output = []
-			for a in self.actions:
-				output.append(self._next_output(state, a))
-			partition.add_state(state, output)
+			partition.add_state(state, self._outputs(state))
 		partition.update()
-		partitions.append(partition)
+		self.partitions.append(partition)
 		while True:
 			partition = Partition()
 			for state in self.states:
-				partition.add_state(state, partitions[-1].successors_partitions(self._successors(state)))
+				print(state)
+				partition.add_state(state, self.partitions[-1].successors_partitions(self._successors(state)))
 			partition.update()
-			partitions.append(partition)
+			self.partitions.append(partition)
+			print
 			if len(self.states) == len(partition): # or partition == partitions[-1]:
 				break
-		return partitions
+		return self.partitions
 
+	def _find_r_b(self, q1, q2):
+		"""Find the index of the first separate partitions q1 and q2 belong to."""
+		for r, partition in enumerate(self.partitions):
+			if partition.state_to_class[q1] == partition.state_to_class[q2]:
+				continue
+			if r > 0:
+				s1 = partition.successors_partitions(self._successors(q1))
+				s2 = partition.successors_partitions(self._successors(q2))
+			else:
+				s1 = self._outputs(q1)
+				s2 = self._outputs(q2)
+			i = 0
+			while s1[i] == s2[i]:
+				i += 1
+			b = self.actions[i]
+			return r, b
 
 	def characterization_set(self):
 		"""Returns a characterizations set of the FSM found using the W-method."""
+		W = dict()
+		for q1, q2 in combinations(self.states, r=2):
+			z = []
+			r, b = self._find_r_b(q1, q2)
+			z.insert(0, b)
+			for _ in range(r):
+				q1, q2 = self._next_state(q1, b), self._next_state(q2, b)
+				_, b = self._find_r_b(q1,q2)
+				z.insert(0, b)
+			W[(q1, q2)] = z
+			W[(q2, q1)] = z
+
+		self.char_set = W
+
+		return W
+
+	def apply_char_set(self):
+		"""Prints the output of each state after applying sequence from characterization set."""
+		char_set = []
+		for seq in self.char_set.values():
+			if seq not in char_set:
+				char_set.append(seq)
+
+		for s in self.states:
+			print(s)
+			for seq in char_set:
+				print(self.transition(s, seq)[1])
+
+	def diff_table(self):
+		"""Returns r for each tuple of states."""
+		# table = [[-1 for _ in self.states] for _ in self.states]
+		table = {}
+		for q1, q2 in permutations(self.states, r=2):
+			table[(q1, q2)] = self._find_r_b(q1, q2)[0]
+			table[(q2, q1)] = table[(q1, q2)]
+		return table
+
+	def find_z(self):
+		"""Derive the test set."""
 		pass
 
 if __name__ == "__main__":
@@ -160,4 +228,6 @@ if __name__ == "__main__":
 	f.read_from_csv("g1A04A.csv")
 	pp = pprint.PrettyPrinter()
 	pp.pprint(f.equivalence_partitions())
-	# print(f.equivalence_partitions())
+	pp.pprint(f.characterization_set())
+	f.apply_char_set()
+	pp.pprint(f.diff_table())

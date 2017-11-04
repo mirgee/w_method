@@ -38,12 +38,13 @@ class Partition(object):
 		partitions = []
 		for successor in successors:
 			partitions.append(self.equiv_class(successor))
+		print(partitions)
 		return partitions
 
 	def update(self):
 		for state in self._states:
 			state_class = self.equiv_class(state)
-			# self.state_to_class[state] = state_class
+			self.state_to_class[state] = state_class
 			if state_class not in self.class_to_states:
 				self.class_to_states[state_class] = []
 			self.class_to_states[state_class].append(state)
