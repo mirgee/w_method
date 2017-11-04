@@ -1,0 +1,20 @@
+   entry state, s32
+    exit state, s31
+default output, o81
+
+              , next state, ,,, output
+ current state, e09, e54, e56,   , e09, e54, e56
+s10           , s41, s46, s31,   ,o81, o60, o81
+s14           , s21, s41, s31,   ,o60, o60, o60
+s21           , s56, s21, s28,   ,o81, o81, o60
+s28           , s31, s56, s61,   ,o60, o81, o60
+s31           , s64, s31, s61,   ,o81, o81, o81
+s32           , s46, s61, s10,   ,o60, o60, o60
+s41           , s21, s56, s48,   ,o60, o60, o81
+s46           , s61, s32, s32,   ,o60, o81, o60
+s48           , s48, s56, s48,   ,o81, o60, o81
+s56           , s97, s59, s64,   ,o81, o60, o81
+s59           , s59, s61, s56,   ,o81, o60, o60
+s61           , s56, s28, s46,   ,o60, o60, o81
+s64           , s21, s59, s61,   ,o81, o81, o81
+s97           , s59, s41, s14,   ,o81, o81, o81
