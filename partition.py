@@ -38,7 +38,7 @@ class Partition(object):
 		partitions = []
 		for successor in successors:
 			partitions.append(self.equiv_class(successor))
-		print(partitions)
+		# print(partitions)
 		return partitions
 
 	def update(self):

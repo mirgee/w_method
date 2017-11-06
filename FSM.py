@@ -21,7 +21,7 @@ class FSM(object):
 		self._covered_transitions = set()
 		# (state, k) -> partition
 		self.partitions = []
-		self.char_set = dict()
+		self.char_set = set()
 
 	def read_from_csv(self, filename):
 		"""Read the FSM from a csv file on filename."""
@@ -154,11 +154,11 @@ class FSM(object):
 		while True:
 			partition = Partition()
 			for state in self.states:
-				print(state)
+				# print(state)
 				partition.add_state(state, self.partitions[-1].successors_partitions(self._successors(state)))
 			partition.update()
 			self.partitions.append(partition)
-			print
+			# print
 			if len(self.states) == len(partition): # or partition == partitions[-1]:
 				break
 		return self.partitions
@@ -194,20 +194,16 @@ class FSM(object):
 			W[(q1, q2)] = z
 			W[(q2, q1)] = z
 
-		self.char_set = W
+		for seq in W.values():
+			self.char_set.add(tuple(seq))
 
-		return W
+		return self.char_set
 
 	def apply_char_set(self):
 		"""Prints the output of each state after applying sequence from characterization set."""
-		char_set = []
-		for seq in self.char_set.values():
-			if seq not in char_set:
-				char_set.append(seq)
-
 		for s in self.states:
 			print(s)
-			for seq in char_set:
+			for seq in self.char_set:
 				print(self.transition(s, seq)[1])
 
 	def diff_table(self):
@@ -221,13 +217,21 @@ class FSM(object):
 
 	def find_z(self):
 		"""Derive the test set."""
-		pass
+		Z = set()
+		# Concatenate inputs with W
+		for inp in self.input_alphabet:
+			for seq in self.char_set:
+				Z.add((inp,)+seq)
+		# Union with W.
+		Z.union(self.char_set)
+		return Z
 
 if __name__ == "__main__":
 	f = FSM()
-	f.read_from_csv("g1A04A.csv")
+	f.read_from_csv("data/g1A03A.csv")
 	pp = pprint.PrettyPrinter()
 	pp.pprint(f.equivalence_partitions())
 	pp.pprint(f.characterization_set())
-	f.apply_char_set()
+	# f.apply_char_set()
 	pp.pprint(f.diff_table())
+	pp.pprint(f.find_z())
