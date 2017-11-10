@@ -75,7 +75,7 @@ class FSM(object):
 		o = []
 		for a in input_word:
 			o.append(self._next_output(s, a))
-			s = self._next_state(state, a)
+			s = self._next_state(s, a)
 		return s, o
 
 	def state_covering_paths(self):
@@ -186,11 +186,12 @@ class FSM(object):
 		for q1, q2 in combinations(self.states, r=2):
 			z = []
 			r, b = self._find_r_b(q1, q2)
-			z.insert(0, b)
+			z.append(b)
+			p1, p2 = q1, q2
 			for _ in range(r):
-				q1, q2 = self._next_state(q1, b), self._next_state(q2, b)
-				_, b = self._find_r_b(q1,q2)
-				z.insert(0, b)
+				p1, p2 = self._next_state(p1, b), self._next_state(p2, b)
+				_, b = self._find_r_b(p1, p2)
+				z.append(b)
 			W[(q1, q2)] = z
 			W[(q2, q1)] = z
 
@@ -199,12 +200,27 @@ class FSM(object):
 
 		return self.char_set
 
-	def apply_char_set(self):
+	def apply_char_set(self, s):
 		"""Prints the output of each state after applying sequence from characterization set."""
-		for s in self.states:
-			print(s)
-			for seq in self.char_set:
-				print(self.transition(s, seq)[1])
+		out = []
+		for seq in self.char_set:
+			out.append(tuple(self.transition(s, seq)[1]))
+		return out
+
+	def test_char_set(self):
+		diff = []
+		for s1 in self.states:
+			for s2 in self.states:
+				if s1 != s2:
+					problem = True
+					for seq in self.char_set:
+						o1 = self.transition(s1, seq)[1]
+						o2 = self.transition(s2, seq)[1]
+						if o1 != o2:
+							problem = False
+					if problem:
+						diff.append([s1, s2])
+		return diff
 
 	def diff_table(self):
 		"""Returns r for each tuple of states."""
@@ -228,10 +244,11 @@ class FSM(object):
 
 if __name__ == "__main__":
 	f = FSM()
-	f.read_from_csv("data/g1A03A.csv")
+	f.read_from_csv("data/g1A04A.csv")
 	pp = pprint.PrettyPrinter()
 	pp.pprint(f.equivalence_partitions())
 	pp.pprint(f.characterization_set())
 	# f.apply_char_set()
 	pp.pprint(f.diff_table())
 	pp.pprint(f.find_z())
+	print(f.test_char_set())
