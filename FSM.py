@@ -2,6 +2,7 @@ import csv
 import pprint
 from itertools import combinations, permutations
 from partition import Partition
+import copy
 
 
 class FSM(object):
@@ -78,9 +79,27 @@ class FSM(object):
 			s = self._next_state(s, a)
 		return s, o
 
-	def state_covering_paths(self):
+	def transitions_in_transition(self, state, input_word):
+		s = state
+		transitions = set()
+		for a in input_word:
+			transitions.add((s, self._next_state(s, a), a))
+			s = self._next_state(s, a)
+		# transitions.add((s, self._next_state(s, input_word[-1]), input_word[-1]))
+		return transitions
+
+	def states_in_transition(self, state, input_word):
+		s = state
+		states = set()
+		states.add(state)
+		for a in input_word:
+			s = self._next_state(s, a)
+			states.add(s)
+		return states
+
+
+	def  state_covering_paths(self):
 		"""Returns state cover of the FSM."""
-		# The same, but only if action leads to a STATE we already visited.
 		remaining = []
 		visited = set()
 		previous = dict() # state -> parent, action
@@ -88,6 +107,7 @@ class FSM(object):
 
 		previous[self.init_state] = (None, None)
 		remaining.append(self.init_state)
+
 		while len(remaining) > 0:
 			parent = remaining.pop()
 			if parent is not self.init_state:
@@ -128,19 +148,27 @@ class FSM(object):
 		edge_cover = self.state_cover()
 		for path in state_cover:
 			for a in self.actions:
-				new_path = path.append(a)
-				if new_path not in state_cover:
+				new_path = copy.deepcopy(path)
+				new_path.append(a)
+				if new_path not in edge_cover:
 					edge_cover.append(new_path)
+		for a in self.actions:
+			edge_cover.append([a])
 		return edge_cover
 
 	def edge_cover(self):
 		"""Find edge cover of FSM."""
 		paths = self.state_covering_paths()
 		edge_cover = self.state_cover()
-		for transition in self.transitions_set - self._covered_transitions:
+		for transition in (self.transitions_set - self._covered_transitions):
 			if transition[0] != self.init_state:
-				path = paths[transition[0]]
-			edge_cover.append(path.append(transition[2]))
+				path = copy.deepcopy(paths[transition[0]])
+			else:
+				for a in self.actions:
+					if self._next_state(self.init_state, a) == self.init_state:
+						edge_cover.append([a])
+			path.append(transition[2])
+			edge_cover.append(path)
 		return edge_cover
 
 
@@ -222,6 +250,36 @@ class FSM(object):
 						diff.append([s1, s2])
 		return diff
 
+	def distinguishing_inputs(self):
+		"""For each tuple of states, returns which sequence from the characterization set distinguishes them."""
+		for s1, s2 in combinations(self.states, r=2):
+			found_one = False
+			for i, seq in enumerate(self.char_set):
+				o1 = self.transition(s1, seq)[1]
+				o2 = self.transition(s2, seq)[1]
+				if o1 != o2:
+					print("({}, {}): {} - {}".format(s1, s2, i, seq))
+					found_one = True
+					break
+			if not found_one:
+				raise Exception("Characterization set failed to distinguish states {}, {}".format(s1, s2))
+		pass
+
+	def test_edge_cover(self):
+		edge_cover = self.edge_cover()
+		found_transitions = set()
+		for l in edge_cover:
+			found_transitions.update(self.transitions_in_transition(self.init_state, l))
+		return self.transitions_set - found_transitions
+
+	def test_state_cover(self):
+		state_cover = self.state_cover()
+		found_states = set()
+		for l in state_cover:
+			found_states.update(self.states_in_transition(self.init_state, l))
+		return self.states - found_states
+
+
 	def diff_table(self):
 		"""Returns r for each tuple of states."""
 		# table = [[-1 for _ in self.states] for _ in self.states]
@@ -246,9 +304,16 @@ if __name__ == "__main__":
 	f = FSM()
 	f.read_from_csv("data/g1A04A.csv")
 	pp = pprint.PrettyPrinter()
+	# pp.pprint(f.test_state_cover())
+	# pp.pprint(f.test_edge_cover())
+	pp.pprint(f.edge_cover())
 	pp.pprint(f.equivalence_partitions())
 	pp.pprint(f.characterization_set())
-	# f.apply_char_set()
+	for s in f.states:
+		print("{}: {}".format(s, f.apply_char_set(s)))
 	pp.pprint(f.diff_table())
 	pp.pprint(f.find_z())
-	print(f.test_char_set())
+	pp.pprint(f.distinguishing_inputs())
+	# print(f.test_char_set())
+	# for seq in f.char_set:
+	# 	pp.pprint(seq)
