@@ -226,12 +226,12 @@ class FSM(object):
 		for seq in W.values():
 			self.char_set.add(tuple(seq))
 
-		return self.char_set
+		return sorted(list(self.char_set))
 
 	def apply_char_set(self, s):
 		"""Prints the output of each state after applying sequence from characterization set."""
 		out = []
-		for seq in self.char_set:
+		for seq in sorted(list(self.char_set)):
 			out.append(tuple(self.transition(s, seq)[1]))
 		return out
 
@@ -254,11 +254,11 @@ class FSM(object):
 		"""For each tuple of states, returns which sequence from the characterization set distinguishes them."""
 		for s1, s2 in combinations(self.states, r=2):
 			found_one = False
-			for i, seq in enumerate(self.char_set):
+			for i, seq in enumerate(sorted(list(self.char_set))):
 				o1 = self.transition(s1, seq)[1]
 				o2 = self.transition(s2, seq)[1]
 				if o1 != o2:
-					print("({}, {}): {} - {}".format(s1, s2, i, seq))
+					print("({}, {}): {} - {: <20} - {:<20} - {:<20}".format(s1, s2, i, seq, o1, o2))
 					found_one = True
 					break
 			if not found_one:
@@ -284,9 +284,9 @@ class FSM(object):
 		"""Returns r for each tuple of states."""
 		# table = [[-1 for _ in self.states] for _ in self.states]
 		table = {}
-		for q1, q2 in permutations(self.states, r=2):
+		for q1, q2 in combinations(self.states, r=2):
 			table[(q1, q2)] = self._find_r_b(q1, q2)[0]
-			table[(q2, q1)] = table[(q1, q2)]
+			# table[(q2, q1)] = table[(q1, q2)]
 		return table
 
 	def find_z(self):
@@ -301,19 +301,27 @@ class FSM(object):
 		return Z
 
 if __name__ == "__main__":
+	filename = "data/g1A04A.csv"
 	f = FSM()
-	f.read_from_csv("data/g1A04A.csv")
+	f.read_from_csv(filename)
 	pp = pprint.PrettyPrinter()
 	# pp.pprint(f.test_state_cover())
 	# pp.pprint(f.test_edge_cover())
+	print("\nSTATE COVER: \n")
+	pp.pprint(f.state_cover())
+	print("\nEDGE COVER: \n")
 	pp.pprint(f.edge_cover())
+	print("\nEQUIVALENCE PARTITIONS: \n")
 	pp.pprint(f.equivalence_partitions())
+	print("\nCHARACTERIZATION SET: \n")
 	pp.pprint(f.characterization_set())
+	print("\nSTATE OUTPUTS FOR INPUTS FROM CHARACTERIZATION SET: \n")
 	for s in f.states:
 		print("{}: {}".format(s, f.apply_char_set(s)))
+	print("\nTABLE OF DIFFERENCES: \n")
 	pp.pprint(f.diff_table())
+	print("\nDERIVED TEST SET: \n")
 	pp.pprint(f.find_z())
+	print("\nDISTINGUISHING INPUTS: \n")
 	pp.pprint(f.distinguishing_inputs())
 	# print(f.test_char_set())
-	# for seq in f.char_set:
-	# 	pp.pprint(seq)
